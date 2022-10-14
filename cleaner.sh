@@ -2,14 +2,14 @@
 
 keep_releases=2
 releases_dir=$(pwd)
-
+dry_run=0
 usage()
 {
   echo "Usage: cleaner  [ -k | --keep RELEASES ] [ -p | --path PATH ]"
   exit 2
 }
 
-PARSED_ARGUMENTS=$(getopt -a -n cleaner.sh -o k:p: --long keep:,path: -- "$@")
+PARSED_ARGUMENTS=$(getopt -a -n cleaner.sh -o d,k:p: --long dry-run,keep:,path: -- "$@")
 VALID_ARGUMENTS=$?
 if [ "$VALID_ARGUMENTS" != "0" ]; then
   usage
@@ -21,6 +21,7 @@ do
   case "$1" in
     -k | --keep) keep_releases="$2"; shift 2 ;;
     -p | --path) releases_dir="$2"; shift 2 ;;
+    -d | --dry-run) dry_run=1; shift ;;
     -- ) shift; break ;;
     *) echo "Unexpected option: $1 - this should not happen."
        usage ;;
@@ -47,12 +48,15 @@ if [[ "$total" -lt "$keep_releases" ]]; then
 fi
 ((total=total-keep_releases))
 i=0
-readarray -d '' entries < <(printf '%s\0' $releases_dir/*/ | sort -zV)
+readarray entries < <(printf '%s\n' $releases_dir/*/ | sort -zV)
 for directory in "${entries[@]}"; do
   if [[ "$total" -eq "$i" ]]; then
+    # notify-send "Release Cleaner" "Successfuly cleaned $releases_dir"
     exit 0
   fi
   echo $((i+1))/$total : deleteing $directory
-  rm -rf $directory
+  if [[ $dry_run -eq 0 ]]; then
+    rm -rf $directory
+  fi
   ((i=i+1))
 done
